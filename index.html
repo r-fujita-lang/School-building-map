@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校舎案内ナビゲーション</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* マップコンテナ (安定版のデザイン) */
+        .map-container { 
+            position: relative; 
+            width: 100%; 
+            aspect-ratio: 4/5; 
+            background: #f8fafc; 
+            border-radius: 1.5rem; 
+            overflow: hidden; 
+            border: 2px solid #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .room-rect { 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            stroke-width: 1.5;
+        }
+        
+        .room-rect:hover { fill: #e0e7ff; stroke: #4f46e5; stroke-width: 2; }
+        
+        .room-rect.start-node { 
+            fill: #10b981 !important; 
+            stroke: #064e3b; 
+            filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+        }
+        
+        .room-rect.end-node { 
+            fill: #f43f5e !important; 
+            stroke: #881337; 
+            filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.4));
+        }
+
+        .room-rect.stairs {
+            fill: #fff7ed !important;
+            stroke: #f97316;
+            stroke-dasharray: 4;
+        }
+        .room-rect.gym-area {
+            fill: #eff6ff !important;
+            stroke: #6366f1;
+        }
+
+        .route-line { 
+            stroke: #f43f5e; 
+            stroke-width: 4; 
+            stroke-dasharray: 10; 
+            animation: dash 1s linear infinite; 
+            fill: none; 
+            stroke-linecap: round; 
+            stroke-linejoin: round;
+        }
+
+        @keyframes dash { to { stroke-dashoffset: -20; } }
+
+        .modal-up { 
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); 
+            transform: translateY(100%); 
+        }
+        .modal-up.active { transform: translateY(0); }
+
+        .building-label { font-size: 10px; fill: #94a3b8; font-weight: bold; pointer-events: none; letter-spacing: 0.1em; opacity: 0.8; }
+        .area-label { font-size: 9px; fill: #cbd5e1; font-weight: bold; pointer-events: none; text-anchor: middle; letter-spacing: 0.2em; opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-24">
+
+    <!-- ヘッダー（安定版デザイン） -->
+    <header class="bg-white border-b sticky top-0 z-40 px-4 py-4 shadow-sm">
+        <div class="max-w-md mx-auto space-y-3">
+            <div class="flex items-center justify-between">
+                <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-location-dot text-indigo-600"></i> 校舎ナビ
+                </h1>
+                <div id="floorBadge" class="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-bold">1F</div>
+            </div>
+            <div class="relative">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="教室名で検索..." 
+                    class="w-full bg-slate-100 border-none rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <div id="searchSuggestions" class="absolute top-full left-0 right-0 bg-white shadow-xl rounded-2xl mt-2 overflow-hidden hidden border z-50 max-h-60 overflow-y-auto"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-6">
+        
+        <!-- フロアセレクター (安定版) -->
+        <div class="flex gap-1 p-1 bg-white rounded-2xl border shadow-sm overflow-x-auto no-scrollbar">
+            <button onclick="changeFloor(1)" id="fbtn-1" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition-all">1F</button>
+            <button onclick="changeFloor(2)" id="fbtn-2" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500">2F</button>
+            <button onclick="changeFloor(3)" id="fbtn-3" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500">3F</button>
+            <button onclick="changeFloor(4)" id="fbtn-4" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500">4F</button>
+        </div>
+
+        <!-- 案内パネル (安定版：黒背景) -->
+        <div id="navStatus" class="hidden bg-slate-900 text-white p-5 rounded-3xl shadow-xl border border-slate-700 animate-fade-in-up">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-[10px] font-bold text-indigo-400 tracking-widest uppercase">Navigation Active</span>
+                <button onclick="resetNav()" class="text-[10px] text-slate-400 bg-slate-800 px-3 py-1 rounded-lg hover:text-white transition-colors">案内を終了</button>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-center gap-1">
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                    <div class="w-0.5 h-6 bg-slate-700"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <p id="navRouteText" class="text-xs font-bold truncate text-white">出発 → 到着</p>
+                </div>
+            </div>
+            <div id="crossFloorNotice" class="mt-4 bg-indigo-500/10 text-indigo-300 p-3 rounded-xl text-[11px] font-bold flex items-center gap-3 hidden border border-indigo-500/20">
+                <div class="bg-indigo-500/20 p-1.5 rounded text-indigo-400"><i class="fas fa-stairs"></i></div>
+                <span id="noticeMessage">階段を利用してください</span>
+            </div>
+        </div>
+
+        <!-- マップ描画エリア -->
+        <div class="map-container group">
+            <!-- 座標系: 500x550 -->
+            <svg id="mainMap" viewBox="0 0 500 550" class="w-full h-full" onclick="handleMapClick(event)">
+                <defs>
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.5"/>
+                    </pattern>
+                </defs>
+                <rect width="500" height="550" fill="url(#grid)" class="pointer-events-none" />
+
+                <!-- 建物エリア -->
+                <g id="buildingShapes"></g>
+                <g id="buildingLabels" class="pointer-events-none"></g>
+
+                <!-- 施設レイヤー -->
+                <g id="mapRooms"></g>
+                <!-- 案内線レイヤー -->
+                <path id="navPath" class="route-line hidden" d="" />
+            </svg>
+            
+            <div id="coordLabel" class="absolute bottom-3 right-3 bg-black/70 text-white text-[10px] px-3 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none backdrop-blur-sm">
+                タップして座標をコピー
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2 px-1">
+                <i class="fas fa-th-list text-indigo-500"></i> この階の施設一覧
+            </h3>
+            <div id="roomList" class="grid grid-cols-1 gap-2"></div>
+        </div>
+    </main>
+
+    <!-- 詳細シート (安定版) -->
+    <div id="bottomSheet" class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center hidden">
+        <div id="sheetContent" class="modal-up bg-white w-full max-w-md rounded-t-[2rem] overflow-hidden p-8 shadow-2xl">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h2 id="sheetTitle" class="text-2xl font-bold text-slate-800">施設名</h2>
+                    <p id="sheetFloor" class="text-xs text-indigo-600 font-bold uppercase tracking-wider mt-1"></p>
+                </div>
+                <button onclick="closeSheet()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-colors">✕</button>
+            </div>
+            <p id="sheetDesc" class="text-sm text-slate-500 mb-10 leading-relaxed"></p>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="setNavPoint('start')" class="bg-emerald-50 text-emerald-600 font-bold py-4 rounded-2xl text-xs border border-emerald-100 active:scale-95 transition-transform flex flex-col items-center gap-1">
+                    <i class="fas fa-map-pin text-lg"></i>
+                    ここから出発
+                </button>
+                <button onclick="setNavPoint('end')" class="bg-indigo-600 text-white font-bold py-4 rounded-2xl text-xs shadow-lg shadow-indigo-200 active:scale-95 transition-transform flex flex-col items-center gap-1">
+                    <i class="fas fa-flag-checkered text-lg"></i>
+                    ここへ行く
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト -->
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-3 rounded-full text-xs shadow-2xl opacity-0 transition-all pointer-events-none z-[100] whitespace-nowrap"></div>
+
+    <script>
+        /**
+         * 校舎データ
+         * - 中央棟左(教室棟): Y=210〜 (南寄りに結合)
+         * - 南棟階段: X=250 (真ん中)
+         */
+        const schoolData = [
+            // ================= 1F =================
+            // 階段
+            { id: '1-st-n', floor: 1, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
+            { id: '1-st-cl-l', floor: 1, name: '中央西階段', x: 50, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '1-st-cl-r', floor: 1, name: '中央中階段', x: 260, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '1-st-cr', floor: 1, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
+            // 南棟階段 (真ん中)
+            { id: '1-st-s', floor: 1, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
+
+            // 体育館
+            { id: '1-gym', floor: 1, name: '体育館', x: 5, y: 40, w: 35, h: 100, type: 'room', desc: 'アリーナ', block: 'gym', style: 'gym-area' },
+
+            // 北棟 (右上)
+            { id: '1-lunch', floor: 1, name: 'ランチルーム', x: 370, y: 30, w: 60, h: 50, type: 'room', block: 'n' },
+            { id: '1-cook', floor: 1, name: '調理室', x: 435, y: 30, w: 30, h: 50, type: 'room', block: 'n' },
+            { id: '1-wel', floor: 1, name: '福祉実習室', x: 470, y: 30, w: 20, h: 50, type: 'room', block: 'n' },
+
+            // 中央棟 左(教室棟) - Y=210
+            { id: '1-health', floor: 1, name: '保健室', x: 80, y: 210, w: 60, h: 60, type: 'room', desc: '保健室', block: 'c_left' },
+            { id: '1-office', floor: 1, name: '事務室', x: 145, y: 210, w: 60, h: 60, type: 'room', desc: '事務室', block: 'c_left' },
+            { id: '1-princ', floor: 1, name: '校長室', x: 210, y: 210, w: 40, h: 60, type: 'room', desc: '校長室', block: 'c_left' },
+
+            // 中央棟 右(ロの字) 1F
+            { id: '1-ent', floor: 1, name: '昇降口', x: 350, y: 130, w: 100, h: 40, type: 'room', desc: '生徒用玄関', block: 'c_right' },
+            { id: '1-pca', floor: 1, name: 'PC室A', x: 350, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
+            { id: '1-art', floor: 1, name: '美術室', x: 385, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
+            { id: '1-craft', floor: 1, name: '工芸室', x: 420, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
+            { id: '1-calli', floor: 1, name: '書道室', x: 455, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
+
+            // 南棟 (階段x:250を挟んで配置)
+            { id: '1-env-p', floor: 1, name: '環境実習', x: 120, y: 380, w: 40, h: 40, type: 'room', block: 's' },
+            { id: '1-env-l', floor: 1, name: '環境講義', x: 165, y: 380, w: 40, h: 40, type: 'room', block: 's' },
+            { id: '1-1a', floor: 1, name: '南1A', x: 210, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            // (階段)
+            { id: '1-1b', floor: 1, name: '南1B', x: 275, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '1-1c', floor: 1, name: '南1C', x: 310, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '1-1d', floor: 1, name: '南1D', x: 345, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '1-stu', floor: 1, name: '生徒会室', x: 380, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+
+            // ================= 2F =================
+            { id: '2-st-n', floor: 2, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
+            { id: '2-st-c-l', floor: 2, name: '中央西階段', x: 50, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '2-st-c-r', floor: 2, name: '中央中階段', x: 270, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '2-st-cr', floor: 2, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
+            { id: '2-st-s', floor: 2, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
+
+            { id: '2-gym', floor: 2, name: '体育館', x: 5, y: 40, w: 40, h: 100, type: 'room', desc: 'アリーナ', block: 'gym', style: 'gym-area' },
+
+            // 北棟 2F
+            { id: '2-lib', floor: 2, name: '図書室', x: 370, y: 30, w: 60, h: 50, type: 'room', block: 'n' },
+            { id: '2-n2a', floor: 2, name: '北2A', x: 435, y: 30, w: 25, h: 50, type: 'room', block: 'n' },
+            { id: '2-n2b', floor: 2, name: '北2B', x: 465, y: 30, w: 25, h: 50, type: 'room', block: 'n' },
+
+            // 中央棟 右 2F
+            { id: '2-chem', floor: 2, name: '化学室', x: 350, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
+            { id: '2-pre-c', floor: 2, name: 'プレゼンC', x: 405, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
+            { id: '2-staff', floor: 2, name: '職員室', x: 360, y: 220, w: 100, h: 60, type: 'room', desc: '職員室', block: 'c_right' },
+
+            // 中央棟 左 2F
+            { id: '2-couns', floor: 2, name: '相談室', x: 75, y: 210, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-pre-a', floor: 2, name: 'プレゼンA', x: 120, y: 210, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-career', floor: 2, name: '進路室', x: 165, y: 210, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-self', floor: 2, name: '自習室', x: 210, y: 210, w: 40, h: 60, type: 'room', block: 'c_left' },
+            // (階段)
+            { id: '2-3-7', floor: 2, name: '3-7', x: 295, y: 210, w: 40, h: 60, type: 'room', block: 'c_left' },
+
+            // 南棟 2F (階段250を挟んで配置)
+            { id: '2-pcb', floor: 2, name: 'PC室B', x: 110, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '2-pre-b', floor: 2, name: 'プレゼンB', x: 145, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '2-1-1', floor: 2, name: '1-1', x: 180, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '2-1-2', floor: 2, name: '1-2', x: 215, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            // (階段)
+            { id: '2-1-3', floor: 2, name: '1-3', x: 275, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '2-1-4', floor: 2, name: '1-4', x: 310, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '2-1-5', floor: 2, name: '1-5', x: 345, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+
+            // ================= 3F =================
+            { id: '3-st-n', floor: 3, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
+            { id: '3-st-c-l', floor: 3, name: '中央西階段', x: 50, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '3-st-c-r', floor: 3, name: '中央中階段', x: 270, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '3-st-cr', floor: 3, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
+            { id: '3-st-s', floor: 3, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
+
+            // 北棟 3F
+            { id: '3-av', floor: 3, name: '視聴覚室', x: 370, y: 30, w: 35, h: 50, type: 'room', block: 'n' },
+            { id: '3-fl', floor: 3, name: '外国語', x: 410, y: 30, w: 30, h: 50, type: 'room', block: 'n' },
+            { id: '3-mus', floor: 3, name: '音楽室', x: 445, y: 30, w: 45, h: 50, type: 'room', block: 'n' },
+
+            // 中央棟 右 3F
+            { id: '3-sci', floor: 3, name: '物理室', x: 350, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
+            { id: '3-bio', floor: 3, name: '生物室', x: 405, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
+            { id: '3-lounge', floor: 3, name: 'ラウンジC', x: 360, y: 250, w: 100, h: 60, type: 'room', block: 'c_right' },
+
+            // 中央棟 左 3F
+            { id: '3-3-1', floor: 3, name: '3-1', x: 80, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-2', floor: 3, name: '3-2', x: 120, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-3', floor: 3, name: '3-3', x: 160, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-4', floor: 3, name: '3-4', x: 200, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-5', floor: 3, name: '3-5', x: 240, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            // (階段)
+            { id: '3-3-6', floor: 3, name: '3-6', x: 300, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+
+            // 南棟 3F
+            { id: '3-s3a', floor: 3, name: '南3A', x: 110, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '3-s3b', floor: 3, name: '南3B', x: 145, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '3-s3c', floor: 3, name: '南3C', x: 180, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '3-s3d', floor: 3, name: '南3D', x: 215, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            // (階段)
+            { id: '3-1-5', floor: 3, name: '1-5', x: 275, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-6', floor: 3, name: '1-6', x: 315, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-7', floor: 3, name: '1-7', x: 355, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-8', floor: 3, name: '1-8', x: 395, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+
+            // --- 4F ---
+            { id: '4-st-c-l', floor: 4, name: '中央西階段', x: 50, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '4-st-c-r', floor: 4, name: '中央東階段', x: 270, y: 210, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            
+            // 中央棟 4F
+            { id: '4-2-1', floor: 4, name: '2-1', x: 80, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-2', floor: 4, name: '2-2', x: 120, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-3', floor: 4, name: '2-3', x: 160, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-4', floor: 4, name: '2-4', x: 200, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-5', floor: 4, name: '2-5', x: 240, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-6', floor: 4, name: '2-6', x: 300, y: 210, w: 35, h: 40, type: 'room', block: 'c_left' }
+        ];
+
+        let state = { floor: 1, start: null, end: null, selected: null };
+
+        window.onload = () => changeFloor(1);
+
+        function changeFloor(f) {
+            state.floor = f;
+            document.getElementById('floorBadge').textContent = `${f}F`;
+            for(let i=1; i<=4; i++) {
+                const btn = document.getElementById(`fbtn-${i}`);
+                if(i===f) btn.className = "f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-md transition-all";
+                else btn.className = "f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500 bg-white border transition-all";
+            }
+            renderBuildings();
+            renderMap();
+            renderList();
+            drawRoute();
+        }
+
+        // 建物の描画
+        function renderBuildings() {
+            const g = document.getElementById('buildingShapes');
+            const l = document.getElementById('buildingLabels');
+            g.innerHTML = ''; l.innerHTML = '';
+            
+            const style = `fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"`;
+            const corridorStyle = `fill="#e2e8f0" stroke="none"`;
+
+            if (state.floor < 4) {
+                // 北棟 (右上)
+                g.innerHTML += `<rect x="340" y="20" width="140" height="70" rx="4" ${style} />`;
+                l.innerHTML += `<text x="350" y="35" class="building-label">北棟</text>`;
+                
+                // 中央棟 (右:ロの字)
+                g.innerHTML += `<rect x="340" y="120" width="140" height="180" rx="4" ${style} />`;
+                g.innerHTML += `<rect x="370" y="160" width="50" height="60" rx="2" fill="#f1f5f9" stroke="#e2e8f0" />`; // 中庭
+                l.innerHTML += `<text x="430" y="135" class="building-label">中央棟(管理)</text>`;
+
+                // 中央棟 (左:教室棟) - y:200に移動して右の下側に接続
+                g.innerHTML += `<rect x="40" y="200" width="300" height="70" rx="4" ${style} />`;
+                l.innerHTML += `<text x="50" y="215" class="building-label">中央棟(教室)</text>`;
+
+                // 渡り廊下(北-中)
+                g.innerHTML += `<rect x="400" y="90" width="20" height="30" ${corridorStyle} />`;
+
+                // 南棟 (下)
+                g.innerHTML += `<rect x="110" y="360" width="370" height="90" rx="4" ${style} />`;
+                l.innerHTML += `<text x="120" y="375" class="building-label">南棟</text>`;
+                
+                // 中-南 接続 (縦)
+                g.innerHTML += `<rect x="400" y="300" width="20" height="70" ${corridorStyle} />`;
+
+                // 体育館 (左上) - 中央棟左端と接続
+                if (state.floor <= 2) {
+                    g.innerHTML += `<rect x="5" y="20" width="40" height="100" rx="4" ${style} />`;
+                    l.innerHTML += `<text x="10" y="35" class="building-label">体</text>`;
+                    // 接続 (縦)
+                    g.innerHTML += `<rect x="30" y="100" width="10" height="20" ${corridorStyle} />`;
+                    g.innerHTML += `<rect x="30" y="120" width="10" height="80" ${corridorStyle} />`;
+                }
+            } else {
+                // 4F (中央棟 左側のみ)
+                g.innerHTML += `<rect x="40" y="200" width="300" height="70" rx="4" ${style} />`; 
+                l.innerHTML += `<text x="50" y="215" class="building-label">中央棟(4F)</text>`;
+            }
+        }
+
+        function renderMap() {
+            const container = document.getElementById('mapRooms');
+            container.innerHTML = '';
+            
+            const rooms = schoolData.filter(r => r.floor === state.floor);
+            rooms.forEach(room => {
+                const isStart = state.start?.id === room.id && state.start.floor === state.floor;
+                const isEnd = state.end?.id === room.id && state.end.floor === state.floor;
+
+                const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                g.onclick = (e) => { e.stopPropagation(); openDetail(room); };
+
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", room.x);
+                rect.setAttribute("y", room.y);
+                rect.setAttribute("width", room.w);
+                rect.setAttribute("height", room.h);
+                rect.setAttribute("rx", "4");
+                let cls = `room-rect ${isStart ? 'start-node' : ''} ${isEnd ? 'end-node' : ''} ${room.type==='stairs'?'stairs':''} ${room.style||''}`;
+                rect.setAttribute("class", cls);
+                
+                if(!isStart && !isEnd && room.type!=='stairs' && !room.style) {
+                    rect.setAttribute("fill", "#ffffff");
+                    rect.setAttribute("stroke", "#e2e8f0");
+                }
+
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", room.x + room.w/2);
+                text.setAttribute("y", room.y + room.h/2 + 3);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("font-size", room.w < 35 ? "8" : "9");
+                text.setAttribute("font-weight", "bold");
+                text.setAttribute("pointer-events", "none");
+                if(isStart||isEnd) text.setAttribute("fill", "#fff");
+                else if(room.type==='stairs') text.setAttribute("fill", "#c2410c");
+                else text.setAttribute("fill", "#475569");
+                text.textContent = room.name;
+
+                g.appendChild(rect);
+                g.appendChild(text);
+                container.appendChild(g);
+            });
+        }
+
+        function renderList() {
+            const list = document.getElementById('roomList');
+            list.innerHTML = '';
+            schoolData.filter(r => r.floor === state.floor).forEach(room => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-3 rounded-xl border flex justify-between items-center cursor-pointer hover:bg-slate-50";
+                div.onclick = () => openDetail(room);
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded flex items-center justify-center text-xs ${room.type==='stairs'?'bg-orange-100 text-orange-600':'bg-indigo-50 text-indigo-600'}">
+                            <i class="fas ${room.type==='stairs'?'fa-stairs':'fa-school'}"></i>
+                        </div>
+                        <span class="text-sm font-bold text-slate-700">${room.name}</span>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function openDetail(room) {
+            state.selected = room;
+            document.getElementById('sheetTitle').textContent = room.name;
+            document.getElementById('sheetFloor').textContent = `${room.floor}F`;
+            document.getElementById('sheetDesc').textContent = room.desc || "詳細情報はありません。";
+            document.getElementById('bottomSheet').classList.remove('hidden');
+            setTimeout(() => document.getElementById('sheetContent').classList.add('active'), 10);
+        }
+
+        function closeSheet() {
+            document.getElementById('sheetContent').classList.remove('active');
+            setTimeout(() => document.getElementById('bottomSheet').classList.add('hidden'), 300);
+        }
+
+        function setNavPoint(type) {
+            if(type === 'start') state.start = state.selected;
+            else state.end = state.selected;
+            closeSheet();
+            if(state.start && state.end) {
+                document.getElementById('navStatus').classList.remove('hidden');
+                drawRoute();
+            } else {
+                renderMap();
+            }
+        }
+
+        function drawRoute() {
+            const path = document.getElementById('navPath');
+            const notice = document.getElementById('crossFloorNotice');
+            const text = document.getElementById('navRouteText');
+            
+            if(!state.start || !state.end) return;
+
+            text.textContent = `${state.start.name} → ${state.end.name}`;
+            path.classList.remove('hidden');
+            
+            // 階段探索
+            const stairs = schoolData.find(r => r.type === 'stairs' && r.floor === state.floor && r.block === state.start.block)
+                        || schoolData.find(r => r.type === 'stairs' && r.floor === state.floor && r.block === 'c_right')
+                        || schoolData.find(r => r.type === 'stairs' && r.floor === state.floor);
+
+            if(state.start.floor === state.end.floor) {
+                notice.classList.add('hidden');
+                if(state.floor === state.start.floor) {
+                    path.setAttribute('d', getPath(state.start, state.end));
+                } else {
+                    path.classList.add('hidden');
+                }
+            } else {
+                notice.classList.remove('hidden');
+                if(state.floor === state.start.floor) {
+                    path.setAttribute('d', getPath(state.start, stairs));
+                } else if(state.floor === state.end.floor) {
+                    const endStairs = schoolData.find(r => r.type === 'stairs' && r.floor === state.floor && r.block === stairs.block) 
+                                   || schoolData.find(r => r.type === 'stairs' && r.floor === state.floor);
+                    path.setAttribute('d', getPath(endStairs, state.end));
+                } else {
+                    path.classList.add('hidden');
+                }
+            }
+        }
+
+        function getPath(from, to) {
+            const x1 = from.x + from.w/2, y1 = from.y + from.h/2;
+            const x2 = to.x + to.w/2, y2 = to.y + to.h/2;
+            let d = `M ${x1} ${y1}`;
+            
+            // 体育館(x<45)からの移動
+            if(x1 < 45 || x2 < 45) {
+                d += ` L 30 ${y1} L 30 230 L 50 230`; 
+                d += ` L ${x2} 230 L ${x2} ${y2}`;
+            }
+            // 中央棟左側(x<340)と右側(x>340)の行き来
+            else if((x1 < 340 && x2 > 340) || (x1 > 340 && x2 < 340)) {
+                d += ` L 330 ${y1} L 330 250 L 350 250`; 
+                d += ` L ${x2} 250 L ${x2} ${y2}`;
+            }
+            // 渡り廊下(x=410付近)経由
+            else if(Math.abs(y1 - y2) > 80 && (x1 > 360 || x2 > 360)) {
+                d += ` L 410 ${y1} L 410 ${y2} L ${x2} ${y2}`;
+            } 
+            else {
+                d += ` L ${x2} ${y1} L ${x2} ${y2}`;
+            }
+            return d;
+        }
+
+        function handleSearch() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const box = document.getElementById('searchSuggestions');
+            if(!q) return box.classList.add('hidden');
+            const res = schoolData.filter(r => r.name.toLowerCase().includes(q));
+            box.innerHTML = res.map(r => `
+                <div onclick="jumpTo('${r.id}')" class="p-3 border-b text-sm hover:bg-slate-50 cursor-pointer flex justify-between">
+                    <span>${r.name}</span><span class="text-xs text-indigo-500 font-bold">${r.floor}F</span>
+                </div>
+            `).join('');
+            box.classList.remove('hidden');
+        }
+
+        function jumpTo(id) {
+            const room = schoolData.find(r => r.id === id);
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            changeFloor(room.floor);
+            openDetail(room);
+        }
+
+        function resetNav() {
+            state.start = null; state.end = null;
+            document.getElementById('navStatus').classList.add('hidden');
+            renderMap();
+        }
+
+        function copyCoordinates(e) {
+            const svg = document.getElementById('mainMap');
+            const pt = svg.createSVGPoint();
+            pt.x = e.clientX; pt.y = e.clientY;
+            const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+            const x = Math.round(loc.x);
+            const y = Math.round(loc.y);
+            const text = `{ x: ${x}, y: ${y}, w: 40, h: 40 },`;
+            navigator.clipboard.writeText(text);
+            showToast(`座標 x:${x}, y:${y} をコピー`);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 2000);
+        }
+    </script>
+</body>
+</html>
+
+
