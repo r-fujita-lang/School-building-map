@@ -76,7 +76,7 @@
 </head>
 <body class="bg-slate-50 min-h-screen pb-24">
 
-    <!-- ヘッダー（安定版） -->
+    <!-- ヘッダー -->
     <header class="bg-white border-b sticky top-0 z-40 px-4 py-4 shadow-sm">
         <div class="max-w-md mx-auto space-y-3">
             <div class="flex items-center justify-between">
@@ -96,7 +96,7 @@
 
     <main class="max-w-md mx-auto p-4 space-y-6">
         
-        <!-- フロアセレクター (安定版) -->
+        <!-- フロアセレクター -->
         <div class="flex gap-1 p-1 bg-white rounded-2xl border shadow-sm overflow-x-auto no-scrollbar">
             <button onclick="changeFloor(1)" id="fbtn-1" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition-all">1F</button>
             <button onclick="changeFloor(2)" id="fbtn-2" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500">2F</button>
@@ -104,7 +104,7 @@
             <button onclick="changeFloor(4)" id="fbtn-4" class="f-btn flex-1 min-w-[60px] py-2 rounded-xl text-xs font-bold text-slate-500">4F</button>
         </div>
 
-        <!-- 案内パネル (安定版：黒背景) -->
+        <!-- 案内パネル -->
         <div id="navStatus" class="hidden bg-slate-900 text-white p-5 rounded-3xl shadow-xl border border-slate-700 animate-fade-in-up">
             <div class="flex justify-between items-center mb-4">
                 <span class="text-[10px] font-bold text-indigo-400 tracking-widest uppercase">Navigation Active</span>
@@ -112,9 +112,9 @@
             </div>
             <div class="flex items-center gap-4">
                 <div class="flex flex-col items-center gap-1">
-                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg"></div>
                     <div class="w-0.5 h-6 bg-slate-700"></div>
-                    <div class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-lg"></div>
                 </div>
                 <div class="flex-1 overflow-hidden">
                     <p id="navRouteText" class="text-xs font-bold truncate text-white">出発 → 到着</p>
@@ -159,7 +159,7 @@
         </div>
     </main>
 
-    <!-- 詳細シート (安定版) -->
+    <!-- 詳細シート -->
     <div id="bottomSheet" class="fixed inset-0 bg-black/60 z-50 flex items-end justify-center hidden">
         <div id="sheetContent" class="modal-up bg-white w-full max-w-md rounded-t-[2rem] overflow-hidden p-8 shadow-2xl">
             <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
@@ -190,33 +190,28 @@
     <script>
         /**
          * 校舎データ
-         * 修正点: 
-         * - 中央棟左ブロック(c_left)と体育館(gym)のY座標を +90px (y:220) に移動し、
-         *   中央棟右ブロック(c_right)の左下に接続させる。
+         * 変更なし (前回の修正を維持)
          */
         const schoolData = [
             // ================= 1F =================
             // 階段
             { id: '1-st-n', floor: 1, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
-            { id: '1-st-cl-l', floor: 1, name: '中央西階段', x: 50, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
-            { id: '1-st-cl-r', floor: 1, name: '中央東階段', x: 310, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '1-st-cl-l', floor: 1, name: '中央西階段', x: 50, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '1-st-cl-r', floor: 1, name: '中央東階段', x: 310, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
             { id: '1-st-cr', floor: 1, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
-            { id: '1-st-s', floor: 1, name: '南棟階段', x: 295, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
-
-            // 体育館 (左下へ移動: y=220ベース)
-            // { id: '1-budo' } は削除済み
+            { id: '1-st-s', floor: 1, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
 
             // 北棟 (右上)
             { id: '1-lunch', floor: 1, name: 'ランチルーム', x: 370, y: 30, w: 60, h: 50, type: 'room', block: 'n' },
             { id: '1-cook', floor: 1, name: '調理室', x: 435, y: 30, w: 30, h: 50, type: 'room', block: 'n' },
             { id: '1-wel', floor: 1, name: '生活福祉室', x: 470, y: 30, w: 20, h: 50, type: 'room', desc: '生活福祉実習室', block: 'n' },
 
-            // 中央棟 左(教室棟) - Y座標を+90px (130->220)
-            { id: '1-health', floor: 1, name: '保健室', x: 80, y: 220, w: 60, h: 60, type: 'room', desc: '保健室', block: 'c_left' },
-            { id: '1-office', floor: 1, name: '事務室', x: 145, y: 220, w: 60, h: 60, type: 'room', desc: '事務室', block: 'c_left' },
-            { id: '1-princ', floor: 1, name: '校長室', x: 210, y: 220, w: 40, h: 60, type: 'room', desc: '校長室', block: 'c_left' },
+            // 中央棟 左(教室棟)
+            { id: '1-health', floor: 1, name: '保健室', x: 80, y: 230, w: 60, h: 60, type: 'room', desc: '保健室', block: 'c_left' },
+            { id: '1-office', floor: 1, name: '事務室', x: 145, y: 230, w: 60, h: 60, type: 'room', desc: '事務室', block: 'c_left' },
+            { id: '1-princ', floor: 1, name: '校長室', x: 210, y: 230, w: 40, h: 60, type: 'room', desc: '校長室', block: 'c_left' },
 
-            // 中央棟 右(ロの字) 1F - 位置変更なし
+            // 中央棟 右(ロの字) 1F
             { id: '1-ent', floor: 1, name: '昇降口', x: 350, y: 130, w: 100, h: 40, type: 'room', desc: '生徒用玄関', block: 'c_right' },
             { id: '1-pca', floor: 1, name: 'PC室A', x: 350, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
             { id: '1-art', floor: 1, name: '美術室', x: 385, y: 220, w: 30, h: 40, type: 'room', block: 'c_right' },
@@ -228,20 +223,18 @@
             { id: '1-env-l', floor: 1, name: '環境講義', x: 165, y: 380, w: 40, h: 40, type: 'room', block: 's' },
             { id: '1-1a', floor: 1, name: '南1A', x: 210, y: 380, w: 25, h: 40, type: 'room', block: 's' },
             { id: '1-1b', floor: 1, name: '南1B', x: 240, y: 380, w: 25, h: 40, type: 'room', block: 's' },
-            { id: '1-1c', floor: 1, name: '南1C', x: 325, y: 380, w: 25, h: 40, type: 'room', block: 's' },
-            { id: '1-1d', floor: 1, name: '南1D', x: 355, y: 380, w: 25, h: 40, type: 'room', block: 's' },
-            { id: '1-stu', floor: 1, name: '生徒会室', x: 385, y: 380, w: 30, h: 40, type: 'room', block: 's' },
+            { id: '1-1c', floor: 1, name: '南1C', x: 280, y: 380, w: 25, h: 40, type: 'room', block: 's' },
+            { id: '1-1d', floor: 1, name: '南1D', x: 310, y: 380, w: 25, h: 40, type: 'room', block: 's' },
+            { id: '1-stu', floor: 1, name: '生徒会室', x: 340, y: 380, w: 30, h: 40, type: 'room', block: 's' },
 
             // ================= 2F =================
-            // 階段
             { id: '2-st-n', floor: 2, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
-            { id: '2-st-c-l', floor: 2, name: '中央西階段', x: 50, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
-            { id: '2-st-c-r', floor: 2, name: '中央東階段', x: 310, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '2-st-c-l', floor: 2, name: '中央西階段', x: 50, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '2-st-c-r', floor: 2, name: '中央東階段', x: 310, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
             { id: '2-st-cr', floor: 2, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
-            { id: '2-st-s', floor: 2, name: '南棟階段', x: 295, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
+            { id: '2-st-s', floor: 2, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
 
-            // 体育館 (2F) - 左下に移動
-            { id: '2-gym', floor: 2, name: '体育館', x: 5, y: 130, w: 40, h: 100, type: 'room', desc: 'アリーナ', block: 'gym', style: 'gym-area' },
+            { id: '2-gym', floor: 2, name: '体育館', x: 5, y: 140, w: 40, h: 100, type: 'room', desc: 'アリーナ', block: 'gym', style: 'gym-area' },
 
             // 北棟 2F
             { id: '2-lib', floor: 2, name: '図書室', x: 370, y: 30, w: 60, h: 50, type: 'room', block: 'n' },
@@ -253,12 +246,12 @@
             { id: '2-pre-c', floor: 2, name: 'プレゼンC', x: 405, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
             { id: '2-staff', floor: 2, name: '職員室', x: 360, y: 220, w: 100, h: 60, type: 'room', desc: '職員室', block: 'c_right' },
 
-            // 中央棟 左 2F - Y座標+90px
-            { id: '2-couns', floor: 2, name: '相談室', x: 75, y: 220, w: 40, h: 60, type: 'room', block: 'c_left' },
-            { id: '2-pre-a', floor: 2, name: 'プレゼンA', x: 120, y: 220, w: 40, h: 60, type: 'room', block: 'c_left' },
-            { id: '2-career', floor: 2, name: '進路室', x: 165, y: 220, w: 40, h: 60, type: 'room', block: 'c_left' },
-            { id: '2-self', floor: 2, name: '自習室', x: 210, y: 220, w: 40, h: 60, type: 'room', block: 'c_left' },
-            { id: '2-3-7', floor: 2, name: '3-7', x: 255, y: 220, w: 40, h: 60, type: 'room', block: 'c_left' },
+            // 中央棟 左 2F
+            { id: '2-couns', floor: 2, name: '相談室', x: 75, y: 230, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-pre-a', floor: 2, name: 'プレゼンA', x: 120, y: 230, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-career', floor: 2, name: '進路室', x: 165, y: 230, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-self', floor: 2, name: '自習室', x: 210, y: 230, w: 40, h: 60, type: 'room', block: 'c_left' },
+            { id: '2-3-7', floor: 2, name: '3-7', x: 255, y: 230, w: 40, h: 60, type: 'room', block: 'c_left' },
 
             // 南棟 2F
             { id: '2-pcb', floor: 2, name: 'PC室B', x: 110, y: 380, w: 30, h: 40, type: 'room', block: 's' },
@@ -266,16 +259,14 @@
             { id: '2-1-1', floor: 2, name: '1-1', x: 180, y: 380, w: 30, h: 40, type: 'room', block: 's' },
             { id: '2-1-2', floor: 2, name: '1-2', x: 215, y: 380, w: 30, h: 40, type: 'room', block: 's' },
             { id: '2-1-3', floor: 2, name: '1-3', x: 250, y: 380, w: 30, h: 40, type: 'room', block: 's' },
-            // (階段)
             { id: '2-1-4', floor: 2, name: '1-4', x: 325, y: 380, w: 30, h: 40, type: 'room', block: 's' },
 
             // ================= 3F =================
-            // 階段
             { id: '3-st-n', floor: 3, name: '北棟階段', x: 345, y: 30, w: 20, h: 20, type: 'stairs', block: 'n' },
-            { id: '3-st-c-l', floor: 3, name: '中央西階段', x: 50, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
-            { id: '3-st-c-r', floor: 3, name: '中央東階段', x: 310, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '3-st-c-l', floor: 3, name: '中央西階段', x: 50, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '3-st-c-r', floor: 3, name: '中央東階段', x: 310, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
             { id: '3-st-cr', floor: 3, name: '中央管理階段', x: 370, y: 170, w: 20, h: 20, type: 'stairs', block: 'c_right' },
-            { id: '3-st-s', floor: 3, name: '南棟階段', x: 295, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
+            { id: '3-st-s', floor: 3, name: '南棟階段', x: 250, y: 400, w: 20, h: 20, type: 'stairs', block: 's' },
 
             // 北棟 3F
             { id: '3-av', floor: 3, name: '視聴覚室', x: 370, y: 30, w: 35, h: 50, type: 'room', block: 'n' },
@@ -287,13 +278,13 @@
             { id: '3-bio', floor: 3, name: '生物室', x: 405, y: 130, w: 45, h: 40, type: 'room', block: 'c_right' },
             { id: '3-lounge', floor: 3, name: 'ラウンジC', x: 360, y: 250, w: 100, h: 60, type: 'room', block: 'c_right' },
 
-            // 中央棟 左(3年生) - Y座標+90px
-            { id: '3-3-1', floor: 3, name: '3-1', x: 60, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '3-3-2', floor: 3, name: '3-2', x: 100, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '3-3-3', floor: 3, name: '3-3', x: 140, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '3-3-4', floor: 3, name: '3-4', x: 180, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '3-3-5', floor: 3, name: '3-5', x: 220, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '3-3-6', floor: 3, name: '3-6', x: 260, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
+            // 中央棟 左(3年生 1~6)
+            { id: '3-3-1', floor: 3, name: '3-1', x: 60, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-2', floor: 3, name: '3-2', x: 100, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-3', floor: 3, name: '3-3', x: 140, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-4', floor: 3, name: '3-4', x: 180, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-5', floor: 3, name: '3-5', x: 220, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '3-3-6', floor: 3, name: '3-6', x: 260, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
 
             // 南棟 3F
             { id: '3-s3a', floor: 3, name: '南3A', x: 125, y: 380, w: 30, h: 40, type: 'room', block: 's' },
@@ -302,21 +293,21 @@
             { id: '3-s3d', floor: 3, name: '南3D', x: 230, y: 380, w: 30, h: 40, type: 'room', block: 's' },
             { id: '3-1-5', floor: 3, name: '1-5', x: 265, y: 380, w: 25, h: 40, type: 'room', block: 's' },
             // (階段)
-            { id: '3-1-6', floor: 3, name: '1-6', x: 320, y: 380, w: 35, h: 40, type: 'room', block: 's' },
-            { id: '3-1-7', floor: 3, name: '1-7', x: 360, y: 380, w: 35, h: 40, type: 'room', block: 's' },
-            { id: '3-1-8', floor: 3, name: '1-8', x: 400, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-6', floor: 3, name: '1-6', x: 310, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-7', floor: 3, name: '1-7', x: 350, y: 380, w: 35, h: 40, type: 'room', block: 's' },
+            { id: '3-1-8', floor: 3, name: '1-8', x: 390, y: 380, w: 35, h: 40, type: 'room', block: 's' },
 
             // --- 4F ---
-            { id: '4-st-c-l', floor: 4, name: '中央西階段', x: 50, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
-            { id: '4-st-c-r', floor: 4, name: '中央東階段', x: 310, y: 220, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '4-st-c-l', floor: 4, name: '中央西階段', x: 50, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
+            { id: '4-st-c-r', floor: 4, name: '中央東階段', x: 310, y: 230, w: 20, h: 20, type: 'stairs', block: 'c_left' },
             
-            // 中央棟 4F (2年生) - Y座標+90px
-            { id: '4-2-1', floor: 4, name: '2-1', x: 80, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '4-2-2', floor: 4, name: '2-2', x: 120, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '4-2-3', floor: 4, name: '2-3', x: 160, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '4-2-4', floor: 4, name: '2-4', x: 200, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '4-2-5', floor: 4, name: '2-5', x: 240, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' },
-            { id: '4-2-6', floor: 4, name: '2-6', x: 280, y: 220, w: 35, h: 40, type: 'room', block: 'c_left' }
+            // 中央棟 4F
+            { id: '4-2-1', floor: 4, name: '2-1', x: 80, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-2', floor: 4, name: '2-2', x: 120, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-3', floor: 4, name: '2-3', x: 160, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-4', floor: 4, name: '2-4', x: 200, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-5', floor: 4, name: '2-5', x: 240, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' },
+            { id: '4-2-6', floor: 4, name: '2-6', x: 280, y: 230, w: 35, h: 40, type: 'room', block: 'c_left' }
         ];
 
         let state = { floor: 1, start: null, end: null, selected: null, routeStairsName: null };
@@ -348,40 +339,41 @@
             const corridorStyle = `fill="#e2e8f0" stroke="none"`;
 
             if (state.floor < 4) {
-                // 北棟 (右上)
+                // 北棟
                 g.innerHTML += `<rect x="340" y="20" width="140" height="70" rx="4" ${style} />`;
                 l.innerHTML += `<text x="350" y="35" class="building-label">北棟</text>`;
                 
-                // 中央棟 (右:ロの字)
+                // 中央棟 (右)
                 g.innerHTML += `<rect x="340" y="120" width="140" height="180" rx="4" ${style} />`;
                 g.innerHTML += `<rect x="370" y="160" width="50" height="60" rx="2" fill="#f1f5f9" stroke="#e2e8f0" />`; // 中庭
                 l.innerHTML += `<text x="430" y="135" class="building-label">中央棟(管理)</text>`;
 
-                // 中央棟 (左:教室棟) - 左下に接続 (y:210)
-                g.innerHTML += `<rect x="40" y="210" width="300" height="70" rx="4" ${style} />`;
-                l.innerHTML += `<text x="50" y="225" class="building-label">中央棟(教室)</text>`;
+                // 中央棟 (左) - Y=230, 右の左下(y=300付近)に接続
+                g.innerHTML += `<rect x="40" y="230" width="300" height="70" rx="4" ${style} />`;
+                l.innerHTML += `<text x="50" y="245" class="building-label">中央棟(教室)</text>`;
 
                 // 渡り廊下(北-中)
                 g.innerHTML += `<rect x="400" y="90" width="20" height="30" ${corridorStyle} />`;
 
-                // 南棟 (下)
+                // 南棟
                 g.innerHTML += `<rect x="110" y="360" width="370" height="90" rx="4" ${style} />`;
                 l.innerHTML += `<text x="120" y="375" class="building-label">南棟</text>`;
                 
-                // 中-南 接続 (縦)
-                g.innerHTML += `<rect x="400" y="300" width="20" height="70" ${corridorStyle} />`;
+                // 渡り廊下(中-南) x=420 (グレーの渡り廊下)
+                g.innerHTML += `<rect x="410" y="300" width="20" height="70" ${corridorStyle} />`;
 
-                // 体育館 (左上) - 中央棟左端と接続
+                // 体育館
                 if (state.floor <= 2) {
-                    g.innerHTML += `<rect x="5" y="110" width="40" height="100" rx="4" ${style} />`;
-                    l.innerHTML += `<text x="10" y="125" class="building-label">体</text>`;
-                    // 接続 (縦) - 中央棟(y:210)に接続
-                    g.innerHTML += `<rect x="30" y="210" width="10" height="20" ${corridorStyle} />`;
+                    g.innerHTML += `<rect x="5" y="140" width="40" height="100" rx="4" ${style} />`;
+                    l.innerHTML += `<text x="10" y="155" class="building-label">体</text>`;
+                    // 接続
+                    g.innerHTML += `<rect x="30" y="230" width="10" height="20" ${corridorStyle} />`;
+                    g.innerHTML += `<rect x="30" y="240" width="10" height="80" ${corridorStyle} />`;
                 }
             } else {
-                // 4F (中央棟 左側のみ)
-                g.innerHTML += `<rect x="40" y="210" width="300" height="70" rx="4" ${style} />`; 
-                l.innerHTML += `<text x="50" y="225" class="building-label">中央棟(4F)</text>`;
+                // 4F
+                g.innerHTML += `<rect x="40" y="230" width="300" height="70" rx="4" ${style} />`; 
+                l.innerHTML += `<text x="50" y="245" class="building-label">中央棟(4F)</text>`;
             }
         }
 
@@ -497,13 +489,15 @@
 
             text.textContent = `${state.start.name} → ${state.end.name}`;
             
+            // 階段決定
             if (state.start.floor !== state.end.floor && !state.routeStairsName) {
                 const availableStairs = getAvailableStairs(state.start.floor, state.end.floor);
                 if (availableStairs.length > 0) {
                     let minDist = Infinity;
                     let targetStairs = null;
+                    const target = (state.end.floor === 4) ? state.end : state.start;
                     availableStairs.forEach(st => {
-                        const d = Math.hypot(st.x - state.start.x, st.y - state.start.y);
+                        const d = Math.hypot(st.x - target.x, st.y - target.y);
                         if (d < minDist) {
                             minDist = d;
                             targetStairs = st;
@@ -542,34 +536,79 @@
             }
         }
 
-        // ルート生成 (Y座標修正版)
+        // ルート生成ロジック (壁抜け防止・渡り廊下(x=420)経由)
         function getPath(from, to) {
             const x1 = from.x + from.w/2, y1 = from.y + from.h/2;
             const x2 = to.x + to.w/2, y2 = to.y + to.h/2;
             let d = `M ${x1} ${y1}`;
             
-            // 1. 各棟のメイン廊下へ
-            // Gym(x<45) -> y=180
-            // C_Left(x<340) -> y=240
-            // C_Right(x>340) -> y=160 (北側) or y=250 (南側) -> x=400
-            // North -> y=55 -> x=400
-            // South -> y=400 -> x=400
+            const HUB_X_RIGHT = 420; // 渡り廊下の中心(x=410～430, gray)
+            const GYM_EXIT = 45; 
 
-            // 簡易実装: ハブ経由
-            if(x1 < 45 || x2 < 45) { // 体育館
-                d += ` L 30 ${y1} L 30 240 L 50 240`; 
-                d += ` L ${x2} 240 L ${x2} ${y2}`;
-            }
-            else if((x1 < 340 && x2 > 340) || (x1 > 340 && x2 < 340)) { // 中左<->中右/他
-                d += ` L 330 ${y1} L 330 240 L 350 240`; 
-                d += ` L ${x2} 240 L ${x2} ${y2}`;
-            }
-            else if(Math.abs(y1 - y2) > 100 && (x1 > 350 || x2 > 350)) { // 南北移動
-                d += ` L 400 ${y1} L 400 ${y2} L ${x2} ${y2}`;
-            } 
-            else {
+            // ブロック判定
+            const getB = (r) => r.block || (r.x < 45 ? 'gym' : (r.y < 100 ? 'n' : (r.y > 350 ? 's' : (r.x < 340 ? 'c_left' : 'c_right'))));
+            const b1 = getB(from);
+            const b2 = getB(to);
+
+            // 同じブロック内
+            if (b1 === b2) {
                 d += ` L ${x2} ${y1} L ${x2} ${y2}`;
+                return d;
             }
+
+            // 南棟(s) <-> 中央左(c_left) のルール
+            // 南棟 -> 右渡り廊下(x=420) -> 中央棟右(y=220付近) -> 中央棟左
+            if ((b1 === 's' && b2 === 'c_left') || (b1 === 'c_left' && b2 === 's')) {
+                if(b1 === 's') {
+                    // 南 -> 横移動で右端(x=420) -> 縦移動で中央棟右下(y=220?265?) -> 横移動して左へ
+                    // 中央棟左の廊下はy=230の上あたり。y=265くらいで右棟の下辺を通る
+                    d += ` L ${HUB_X_RIGHT} ${y1} L ${HUB_X_RIGHT} 265 L ${x2} 265 L ${x2} ${y2}`;
+                } else {
+                    d += ` L ${x1} 265 L ${HUB_X_RIGHT} 265 L ${HUB_X_RIGHT} ${y2} L ${x2} ${y2}`;
+                }
+                return d;
+            }
+
+            // 北棟(n) ⇔ 体育館(gym) : 北->HUB(420)->中央右->中央左->体育館
+            if ((b1==='n' && b2==='gym') || (b1==='gym' && b2==='n')) {
+                 if(b1==='n') d += ` L 410 ${y1} L 410 160 L ${GYM_EXIT} 160 L ${GYM_EXIT} ${y2}`;
+                 else d += ` L ${GYM_EXIT} ${y1} L ${GYM_EXIT} 160 L 410 160 L 410 ${y2}`;
+                 d += ` L ${x2} ${y2}`;
+                 return d;
+            }
+
+            // その他、南・北が絡む移動はハブ(x=420)経由
+            let useHub = (b1 === 's' || b2 === 's' || b1 === 'n' || b2 === 'n');
+            
+            if(useHub) {
+                // Step1: 出発 -> ハブ
+                let exitY = y1;
+                if (b1 === 's') { d += ` L ${HUB_X_RIGHT} ${y1}`; }
+                else if (b1 === 'n') { d += ` L ${HUB_X_RIGHT} ${y1} L ${HUB_X_RIGHT} 90`; }
+                else if (b1 === 'c_right') { d += ` L ${HUB_X_RIGHT} ${y1}`; }
+                else if (b1 === 'c_left') { d += ` L ${x1} 265 L ${HUB_X_RIGHT} 265`; }
+                else if (b1 === 'gym') { d += ` L 45 ${y1} L 45 265 L ${HUB_X_RIGHT} 265`; }
+
+                // Step2: ハブ内移動 -> 目的地
+                let targetY = y2;
+                if (b2 === 's') targetY = 300;
+                if (b2 === 'n') targetY = 90;
+                if (b2 === 'c_left' || b2 === 'gym') targetY = 265; 
+                else if(b2 === 'c_right') targetY = 160; // 中央右へは横から入る
+                
+                d += ` L ${HUB_X_RIGHT} ${targetY}`;
+
+                if (b2 === 's') { d += ` L ${HUB_X_RIGHT} ${y2} L ${x2} ${y2}`; }
+                else if (b2 === 'n') { d += ` L ${x2} 90 L ${x2} ${y2}`; }
+                else if (b2 === 'c_right') { d += ` L ${x2} ${y2}`; }
+                else if (b2 === 'c_left') { d += ` L ${HUB_X_RIGHT} 265 L ${x2} 265 L ${x2} ${y2}`; }
+                else if (b2 === 'gym') { d += ` L ${HUB_X_RIGHT} 265 L 45 265 L 45 ${y2} L ${x2} ${y2}`; }
+                
+                return d;
+            }
+
+            // 中央棟内 (c_left <-> c_right)
+            d += ` L ${x1} 160 L ${x2} 160 L ${x2} ${y2}`;
             return d;
         }
 
@@ -623,5 +662,3 @@
     </script>
 </body>
 </html>
-
-
